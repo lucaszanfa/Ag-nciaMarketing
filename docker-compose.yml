@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: marketing-ai-studio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marketing_ai_studio
+      POSTGRES_PASSWORD: marketing_ai_studio
+      POSTGRES_DB: marketing_ai_studio
+    ports:
+      - "5433:5432"
+    volumes:
+      - marketing_ai_studio_pgdata:/var/lib/postgresql/data
+
+volumes:
+  marketing_ai_studio_pgdata:
