@@ -7,6 +7,8 @@ import {
   instagramReelsSchema,
   instagramStorySchema,
   instagramWriterOutputSchema,
+  normalizeInstagramStory,
+  type InstagramStory,
   type InstagramWriterOutput,
 } from "../schemas/instagram-writer.schema";
 import {
@@ -43,7 +45,7 @@ function schemaForFormat(format: ContentFormat): ZodType<InstagramContent> {
 
 class InstagramWriterAgentImpl implements InstagramWriterAgent {
   async execute(input: InstagramWriterInput): Promise<AgentRunResult<InstagramWriterOutput>> {
-    return runAgent({
+    const result = await runAgent({
       agentName: "INSTAGRAM_WRITER",
       promptVersion: INSTAGRAM_WRITER_PROMPT_VERSION,
       buildSystemPrompt: buildInstagramWriterSystemPrompt,
@@ -51,10 +53,11 @@ class InstagramWriterAgentImpl implements InstagramWriterAgent {
       schema: instagramWriterOutputSchema,
       fallback: () => generateSimulatedInstagramContent(input),
     });
+    return { ...result, data: { ...result.data, stories: result.data.stories.map(normalizeInstagramStory) } };
   }
 
   async revise(input: RevisionInput<InstagramContent>): Promise<AgentRunResult<InstagramContent>> {
-    return runAgent({
+    const result = await runAgent({
       agentName: "INSTAGRAM_WRITER_REVISION",
       promptVersion: INSTAGRAM_WRITER_REVISION_PROMPT_VERSION,
       buildSystemPrompt: buildInstagramWriterRevisionSystemPrompt,
@@ -62,6 +65,8 @@ class InstagramWriterAgentImpl implements InstagramWriterAgent {
       schema: schemaForFormat(input.format),
       fallback: () => generateSimulatedInstagramRevision(input),
     });
+    if (input.format !== "STORIES") return result;
+    return { ...result, data: normalizeInstagramStory(result.data as InstagramStory) };
   }
 }
 

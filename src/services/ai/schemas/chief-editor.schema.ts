@@ -8,7 +8,14 @@ const contentPlanFormatSchema = z.enum(["POST", "CAROUSEL", "REELS", "STORIES", 
 export const contentPlanItemSchema = z.object({
   id: z.string(),
   platform: contentPlanPlatformSchema,
-  format: contentPlanFormatSchema,
+  format: contentPlanFormatSchema.describe(
+    "POST/CAROUSEL/REELS/STORIES/ARTICLE are individual pieces of content about a topic. " +
+      "CAMPAIGN_PLAN is different: use it ONLY when the CEO explicitly asks for a full " +
+      "institutional campaign (a multi-week strategic initiative with phases, a schedule, and " +
+      "multiple channels) — not for a single post that merely mentions or announces something. " +
+      "If the request says 'campanha'/'campaign' as a strategic initiative, the content plan " +
+      "MUST include exactly one item with format CAMPAIGN_PLAN and platform GENERAL."
+  ),
   theme: z.string(),
   objective: z.string(),
   briefing: z.string(),

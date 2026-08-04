@@ -48,28 +48,35 @@ export const instagramPostSchema = z.object({
   visualSuggestion: z.string().min(1),
 });
 
-export const instagramStorySchema = z
-  .object({
-    briefId: z.string(),
-    internalTitle: z.string().min(1),
-    screens: z
-      .array(
-        z.object({
-          order: z.number().int().positive(),
-          text: z.string().min(1),
-          interactionType: z.string().min(1),
-        })
-      )
-      .min(1),
-    /** Derived from `screens` when the model/fallback doesn't set it explicitly — kept for older consumers (e.g. `content-text.ts`). */
-    frames: z.array(z.string()).default([]),
-    cta: z.string().min(1),
-    visualSuggestion: z.string().min(1),
-  })
-  .transform((story) => ({
-    ...story,
-    frames: story.frames.length > 0 ? story.frames : story.screens.map((screen) => screen.text),
-  }));
+export const instagramStorySchema = z.object({
+  briefId: z.string(),
+  internalTitle: z.string().min(1),
+  screens: z
+    .array(
+      z.object({
+        order: z.number().int().positive(),
+        text: z.string().min(1),
+        interactionType: z.string().min(1),
+      })
+    )
+    .min(1),
+  /** Derived from `screens` when the model/fallback doesn't set it explicitly — kept for older consumers (e.g. `content-text.ts`). */
+  frames: z.array(z.string()).default([]),
+  cta: z.string().min(1),
+  visualSuggestion: z.string().min(1),
+});
+
+/**
+ * Fills `frames` from `screens` when the AI/simulated output left it empty.
+ * Kept as a plain function (not a Zod `.transform()`) because transforms have
+ * no JSON Schema equivalent and break structured-output providers that need
+ * to convert the schema to JSON Schema (Gemini, and OpenAI-compatible local
+ * servers like LM Studio).
+ */
+export function normalizeInstagramStory<T extends z.infer<typeof instagramStorySchema>>(story: T): T {
+  if (story.frames.length > 0) return story;
+  return { ...story, frames: story.screens.map((screen) => screen.text) };
+}
 
 export const instagramWriterOutputSchema = z.object({
   carousels: z.array(instagramCarouselSchema).default([]),

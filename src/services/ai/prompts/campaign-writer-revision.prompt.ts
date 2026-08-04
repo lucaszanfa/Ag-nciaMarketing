@@ -7,6 +7,9 @@ export function buildCampaignWriterRevisionSystemPrompt(): string {
   return `You are the same campaign strategist, now correcting a campaign you already structured
 based on feedback from the Reviewer.
 
+IMPORTANT: Always write in Brazilian Portuguese (pt-BR), regardless of the language of this system
+prompt. Every field must be the ACTUAL FINAL COPY, never a description of what it should say.
+
 Rules:
 - Preserve the original concept and objective — you are revising this campaign, not designing a
   new one, unless the Reviewer's feedback specifically says the concept itself is the problem.

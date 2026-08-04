@@ -214,44 +214,45 @@ export async function runWorkflow(projectId: string): Promise<void> {
     await updateProjectProgress(projectId, 30);
 
     // 3-5. LinkedIn / Instagram / Campaign writers run in parallel once briefings exist.
+    // A writer's execution row reflects SKIPPED immediately when it has nothing to do,
+    // instead of sitting at "WORKING" until the other (possibly much slower) writers in
+    // the same Promise.all below finish — otherwise a skipped writer visually looks stuck
+    // for as long as its slowest sibling takes.
     await workflowExecutionRepository.update(projectId, { currentAgent: "LINKEDIN_WRITER" });
     const linkedinExecution = await agentExecutionRepository.create({
       projectId,
       agentType: "LINKEDIN_WRITER",
-      status: "WORKING",
+      status: shouldRunLinkedin ? "WORKING" : "SKIPPED",
       input: { briefs: linkedinBriefs } as unknown as Prisma.InputJsonValue,
     });
-    await agentExecutionRepository.update(linkedinExecution.id, {
-      startedAt: new Date(),
-      currentMessage: "Escrevendo posts para LinkedIn",
-      progress: 40,
-    });
+    await agentExecutionRepository.update(linkedinExecution.id, shouldRunLinkedin
+      ? { startedAt: new Date(), currentMessage: "Escrevendo posts para LinkedIn", progress: 40 }
+      : { startedAt: new Date(), completedAt: new Date(), progress: 100, currentMessage: "Não solicitado para este pedido" }
+    );
 
     await workflowExecutionRepository.update(projectId, { currentAgent: "INSTAGRAM_WRITER" });
     const instagramExecution = await agentExecutionRepository.create({
       projectId,
       agentType: "INSTAGRAM_WRITER",
-      status: "WORKING",
+      status: shouldRunInstagram ? "WORKING" : "SKIPPED",
       input: { briefs: instagramBriefs } as unknown as Prisma.InputJsonValue,
     });
-    await agentExecutionRepository.update(instagramExecution.id, {
-      startedAt: new Date(),
-      currentMessage: "Montando o carrossel e o roteiro de Reels",
-      progress: 40,
-    });
+    await agentExecutionRepository.update(instagramExecution.id, shouldRunInstagram
+      ? { startedAt: new Date(), currentMessage: "Montando o carrossel e o roteiro de Reels", progress: 40 }
+      : { startedAt: new Date(), completedAt: new Date(), progress: 100, currentMessage: "Não solicitado para este pedido" }
+    );
 
     await workflowExecutionRepository.update(projectId, { currentAgent: "CAMPAIGN_WRITER" });
     const campaignExecution = await agentExecutionRepository.create({
       projectId,
       agentType: "CAMPAIGN_WRITER",
-      status: "WORKING",
+      status: shouldRunCampaign ? "WORKING" : "SKIPPED",
       input: { briefs: campaignBriefs } as unknown as Prisma.InputJsonValue,
     });
-    await agentExecutionRepository.update(campaignExecution.id, {
-      startedAt: new Date(),
-      currentMessage: "Avaliando a necessidade de uma campanha institucional",
-      progress: 40,
-    });
+    await agentExecutionRepository.update(campaignExecution.id, shouldRunCampaign
+      ? { startedAt: new Date(), currentMessage: "Avaliando a necessidade de uma campanha institucional", progress: 40 }
+      : { startedAt: new Date(), completedAt: new Date(), progress: 100, currentMessage: "Não solicitado para este pedido" }
+    );
 
     async function runWriter<T>(executionId: string, run: () => Promise<T>): Promise<T> {
       try {

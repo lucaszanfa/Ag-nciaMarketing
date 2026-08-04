@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PlanningPanel } from "./planning-panel";
+import { ContentOverviewPanel } from "./content-overview-panel";
 import { LinkedInPanel } from "./linkedin-panel";
 import { InstagramPanel } from "./instagram-panel";
 import { CampaignPanel } from "./campaign-panel";
@@ -113,16 +114,24 @@ export function DeliveryTabs({ project }: { project: SerializedProjectDetail }) 
         <BulkActionsToolbar projectId={project.id} waitingCount={waitingCount} />
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="planejamento">
+        <Tabs defaultValue="resultado">
           <TabsList className="flex-wrap">
-            <TabsTrigger value="planejamento">Planejamento</TabsTrigger>
+            <TabsTrigger value="resultado">Resultado</TabsTrigger>
             <TabsTrigger value="linkedin">LinkedIn</TabsTrigger>
             <TabsTrigger value="instagram">Instagram</TabsTrigger>
             <TabsTrigger value="campanha">Campanha</TabsTrigger>
             <TabsTrigger value="revisao">Revisão</TabsTrigger>
+            <TabsTrigger value="planejamento">Planejamento</TabsTrigger>
             <TabsTrigger value="resumo">Resumo final</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="resultado" className="pt-4">
+            <ContentOverviewPanel
+              linkedinContents={linkedinContents}
+              instagramContents={instagramContents}
+              campaignContent={campaignContent}
+            />
+          </TabsContent>
           <TabsContent value="planejamento" className="pt-4">
             <PlanningPanel plan={plan} />
           </TabsContent>

@@ -7,6 +7,9 @@ export function buildLinkedInWriterRevisionSystemPrompt(): string {
   return `You are the same senior LinkedIn copywriter, now correcting a post you already wrote based
 on feedback from the Reviewer.
 
+IMPORTANT: Always write in Brazilian Portuguese (pt-BR), regardless of the language of this system
+prompt. Every field must be the ACTUAL FINAL TEXT to publish, never a description of what to write.
+
 Rules:
 - Preserve the original objective, audience and briefId — you are revising this post, not writing
   a new one.

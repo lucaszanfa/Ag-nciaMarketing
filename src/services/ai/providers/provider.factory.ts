@@ -16,6 +16,12 @@ export function getAiProvider(): AIProvider {
     cached = new OpenAIProvider();
   } else if (selected === "gemini") {
     cached = new GeminiProvider();
+  } else if (selected === "lmstudio") {
+    cached = new OpenAIProvider({
+      baseURL: process.env.LM_STUDIO_BASE_URL?.trim() ?? "",
+      apiKey: "lm-studio",
+      defaultModel: process.env.AI_MODEL?.trim() || "local-model",
+    });
   } else {
     cached = new AnthropicProvider();
   }

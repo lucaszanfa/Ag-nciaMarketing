@@ -51,11 +51,12 @@ export function getAiConfig(): AiConfig {
   };
 }
 
-/** Name of the API key env var the currently selected provider needs. */
-export function currentProviderKeyName(): "ANTHROPIC_API_KEY" | "OPENAI_API_KEY" | "GEMINI_API_KEY" {
+/** Name of the env var whose presence enables real AI for the currently selected provider. */
+export function currentProviderKeyName(): "ANTHROPIC_API_KEY" | "OPENAI_API_KEY" | "GEMINI_API_KEY" | "LM_STUDIO_BASE_URL" {
   const provider = process.env.AI_PROVIDER?.trim().toLowerCase();
   if (provider === "openai") return "OPENAI_API_KEY";
   if (provider === "gemini") return "GEMINI_API_KEY";
+  if (provider === "lmstudio") return "LM_STUDIO_BASE_URL";
   return "ANTHROPIC_API_KEY";
 }
 
