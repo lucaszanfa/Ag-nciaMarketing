@@ -1,0 +1,327 @@
+// Prisma schema — Marketing AI Studio
+// Single-tenant internal tool: one company, no multi-org/plan/subscription concepts.
+//
+// Datasource: SQLite (zero-setup local dev, no external DB server required).
+// Enum-like fields below are plain String columns — SQLite has no native enum
+// type — with the allowed values documented as TS unions in src/types/enums.ts
+// and enforced at runtime by the Zod schemas in src/validations and
+// src/services/ai/schemas. To move to Postgres/MySQL in production, change
+// the datasource provider back and re-introduce `enum` blocks for these
+// fields; nothing else in the app depends on the DB enforcing them.
+//
+// Json fields have no `@default(...)` here: Prisma's SQLite migration engine
+// emits array/object JSON defaults (e.g. `@default("[]")`) as unquoted SQL,
+// which fails to apply. Every repository method that creates these rows
+// supplies the default value explicitly in application code instead.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------- Models ----------
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+}
+
+model CompanySettings {
+  id String @id @default(cuid())
+
+  companyName String
+  description String?
+  industry    String?
+
+  products Json
+  services Json
+
+  targetAudience String?
+  toneOfVoice    String?
+
+  objectives Json
+
+  preferredTerms  Json
+  forbiddenTerms  Json
+  allowedTopics   Json
+  forbiddenTopics Json
+
+  defaultCta String?
+  hashtags   Json
+
+  website        String?
+  socialNetworks Json
+
+  logoUrl          String?
+  colors           Json
+  visualGuidelines String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id String @id @default(cuid())
+
+  title           String
+  originalRequest String
+  /// ProjectStatus (see src/types/enums.ts)
+  status          String @default("DRAFT")
+  progress        Int    @default(0)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  workflowExecution WorkflowExecution?
+  agentExecutions   AgentExecution[]
+  generatedContents GeneratedContent[]
+  reviews           Review[]
+  messages          ProjectMessage[]
+
+  @@index([status])
+  @@index([createdById])
+}
+
+model WorkflowExecution {
+  id String @id @default(cuid())
+
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// ProjectStatus (see src/types/enums.ts)
+  status   String  @default("DRAFT")
+  /// AgentType (see src/types/enums.ts)
+  currentAgent String?
+  progress     Int     @default(0)
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+}
+
+model AgentExecution {
+  id String @id @default(cuid())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  workflowExecutionId String?
+
+  /// AgentType (see src/types/enums.ts)
+  agentType String
+  /// AgentStatus (see src/types/enums.ts)
+  status    String @default("WAITING")
+  progress  Int    @default(0)
+
+  currentMessage String?
+
+  input  Json?
+  output Json?
+
+  /// AI provider used for this execution (e.g. "anthropic", "openai"); null when simulated
+  provider String?
+  /// Model id used for this execution; null when simulated or not reported by the SDK
+  model    String?
+  /// Version of the prompt used (see PROMPT_VERSION constants in src/services/ai/prompts)
+  promptVersion String?
+
+  inputTokens  Int?
+  outputTokens Int?
+  totalTokens  Int?
+
+  retryCount   Int     @default(0)
+  usedFallback Boolean @default(false)
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+
+  generatedContents GeneratedContent[]
+
+  @@index([projectId])
+  @@index([projectId, agentType])
+}
+
+model GeneratedContent {
+  id String @id @default(cuid())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  agentExecutionId String
+  agentExecution   AgentExecution @relation(fields: [agentExecutionId], references: [id], onDelete: Cascade)
+
+  /// Platform (see src/types/enums.ts)
+  platform String
+  /// ContentFormat (see src/types/enums.ts)
+  format   String
+
+  title    String
+  content  Json
+  metadata Json
+
+  /// Path under /public to the AI-generated image for this piece (e.g. /generated-images/{id}.png); null until generated or when the format has no visual brief (Campaign)
+  imageUrl String?
+
+  /// ContentStatus (see src/types/enums.ts)
+  status String @default("DRAFT")
+
+  /// Current version number, mirrors the latest GeneratedContentVersion.versionNumber
+  currentVersion Int @default(1)
+  /// How many automatic Reviewer↔writer correction rounds have run for this content
+  automaticRevisionCount Int @default(0)
+  /// Per-content cap on automatic corrections (see AI_MAX_AUTOMATIC_REVISIONS)
+  maxAutomaticRevisions  Int @default(2)
+  /// ReviewDecision (see src/types/enums.ts) — the most recent Reviewer decision
+  latestReviewDecision String?
+  /// True when the automatic correction loop stopped because it hit maxAutomaticRevisions
+  revisionLimitReached Boolean @default(false)
+  /// Id of the Review row that most recently evaluated this content
+  lastReviewId String?
+
+  /// Publication date/time chosen on the editorial calendar (Phase 4); null until scheduled
+  scheduledAt DateTime?
+  /// When the content was manually (or, in the future, automatically) marked as published
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviews  Review[]
+  versions GeneratedContentVersion[]
+  comments ContentComment[]
+
+  @@index([projectId])
+  @@index([projectId, platform])
+  @@index([scheduledAt])
+}
+
+model ContentComment {
+  id String @id @default(cuid())
+
+  generatedContentId String
+  generatedContent   GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+
+  authorName String
+  content    String
+
+  createdAt DateTime @default(now())
+
+  @@index([generatedContentId])
+}
+
+model GeneratedContentVersion {
+  id String @id @default(cuid())
+
+  generatedContentId String
+  generatedContent   GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+  contentData   Json
+  textContent   String?
+
+  /// ContentVersionSource (see src/types/enums.ts)
+  source String
+  /// AgentType (see src/types/enums.ts) — null for HUMAN_EDIT
+  createdByAgent String?
+
+  /// 0 for the initial generation, 1/2/... for each automatic correction round
+  revisionAttempt Int @default(0)
+  /// Id of the Review that motivated this version (null for the initial generation)
+  reviewId     String?
+  changeReason String?
+
+  /// True when this version came from a writer's simulated fallback, not real AI
+  usedFallback Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([generatedContentId, versionNumber])
+  @@index([generatedContentId])
+}
+
+model Review {
+  id String @id @default(cuid())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  generatedContentId String?
+  generatedContent   GeneratedContent? @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+
+  /// Platform (see src/types/enums.ts) — the reviewed content's platform, denormalized for convenience
+  platform String?
+  /// ContentFormat (see src/types/enums.ts) — the reviewed content's format, denormalized for convenience
+  format   String?
+
+  overallScore    Int
+  clarityScore    Int
+  channelFitScore Int
+  brandToneScore  Int
+  ctaScore        Int
+  /// Extra criteria from Phase 2 (grammar, briefing alignment, factual safety) not covered above
+  grammarScore            Int?
+  briefingAlignmentScore  Int?
+  factualSafetyScore      Int?
+
+  problems    Json
+  suggestions Json
+  /// Concrete correction instructions for the writer agents (Phase 2)
+  correctionInstructions Json?
+  /// Optional rewritten version suggested by the reviewer
+  suggestedRevision String?
+
+  /// ReviewDecision (see src/types/enums.ts)
+  decision String
+
+  /// Which GeneratedContentVersion.versionNumber this review evaluated
+  reviewedVersion Int @default(1)
+  /// 0 for the first (batch) review, 1/2/... for each automatic re-review round
+  revisionAttempt Int @default(0)
+  /// True when this review's decision caused the coordinator to request a new version
+  triggeredAutomaticRevision Boolean @default(false)
+  /// True when this is the last automatic-cycle review for this content (approved, blocked, or limit reached)
+  isFinalAutomaticReview Boolean @default(false)
+  /// The Reviewer judged this issue as needing a human call, not an automatic fix
+  requiresHumanDecision Boolean @default(false)
+  /// The Reviewer judged the problems found as fixable by an automatic correction round
+  canBeAutomaticallyRevised Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model ProjectMessage {
+  id String @id @default(cuid())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// MessageAuthorType (see src/types/enums.ts)
+  authorType String
+  /// AgentType (see src/types/enums.ts)
+  agentType  String?
+
+  content  String
+  metadata Json
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
