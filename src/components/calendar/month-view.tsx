@@ -21,14 +21,17 @@ function findItem(itemsByDay: Map<string, CalendarContentItem[]>, id: string): C
 export function MonthView({
   days,
   itemsByDay,
+  readOnly = false,
 }: {
   days: CalendarDay[];
   itemsByDay: Map<string, CalendarContentItem[]>;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
   async function handleDrop(e: React.DragEvent, day: Date) {
+    if (readOnly) return;
     e.preventDefault();
     setDragOverKey(null);
     const contentId = e.dataTransfer.getData("text/plain");
@@ -86,7 +89,7 @@ export function MonthView({
               </span>
               <div className="flex flex-col gap-1 overflow-y-auto">
                 {items.map((item) => (
-                  <CalendarItemCard key={item.id} item={item} compact />
+                  <CalendarItemCard key={item.id} item={item} compact readOnly={readOnly} />
                 ))}
               </div>
             </div>

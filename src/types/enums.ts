@@ -57,3 +57,9 @@ export type ContentVersionSource =
   | "HUMAN_REQUESTED_REVISION";
 
 export type MessageAuthorType = "CEO" | "AGENT" | "SYSTEM" | "USER";
+
+/** ADMIN can also do everything CEO can (see src/lib/auth.ts requireRole). */
+export type UserRole = "ADMIN" | "CEO" | "COMMON";
+
+/** Gates login: only APPROVED accounts can authenticate (see src/server/actions/auth.actions.ts). */
+export type UserStatus = "PENDING" | "APPROVED" | "REJECTED";

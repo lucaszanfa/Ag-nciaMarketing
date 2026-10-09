@@ -11,6 +11,9 @@ import { campaignWriterAgent } from "@/services/ai/agents/campaign-writer.agent"
 import { chiefEditorAgent } from "@/services/ai/agents/chief-editor.agent";
 import { buildCompanyContext } from "@/services/ai/company-context.service";
 import { buildContentCopyText } from "@/lib/content-text";
+import { truncateAtWord } from "@/lib/format";
+import { parseRequestOptions } from "@/lib/project-request";
+import { normalizeContentPlan } from "./content-plan-normalizer";
 import { getAiConfig } from "@/services/ai/config";
 import {
   reviewCorrectionCoordinator,
@@ -18,7 +21,7 @@ import {
   type ContentReviewCycleResult,
 } from "./review-correction-coordinator";
 import { messageRepository } from "@/server/repositories/message.repository";
-import { notifyPendingApproval } from "@/services/notifications/n8n-webhook";
+import { notifyPendingApproval, notifyContentReadyForImage } from "@/services/notifications/n8n-webhook";
 import { generateAndStoreContentImage } from "@/services/ai/generate-and-store-image";
 import type { AgentRunResult } from "@/services/ai/agent-runner";
 import type { Prisma } from "@/generated/prisma/client";
@@ -146,7 +149,15 @@ export async function runWorkflow(projectId: string): Promise<void> {
     await sleep(600);
 
     const chiefResult = await chiefEditorAgent.execute({ originalRequest: project.originalRequest, company });
-    const aiPlan = chiefResult.data;
+    const aiPlan = normalizeContentPlan(chiefResult.data, parseRequestOptions(project.requestOptions));
+
+    // The request text makes a poor title ("Criar 1 post para LinkedIn usando..."); the Chief
+    // Editor's own short title is much better when it actually came from the AI.
+    if (!chiefResult.usedFallback && aiPlan.projectTitle.trim()) {
+      const title = truncateAtWord(aiPlan.projectTitle.trim(), 80);
+      await prisma.project.update({ where: { id: projectId }, data: { title } });
+      project.title = title;
+    }
 
     await agentExecutionRepository.update(chiefExecution.id, {
       status: executionStatus(chiefResult.usedFallback),
@@ -445,24 +456,26 @@ export async function runWorkflow(projectId: string): Promise<void> {
         : "Redator Instagram: não solicitado para este pedido.",
     });
 
-    // Persist Campaign content (always creates a row, even when `required` is false,
-    // so the delivery screen can explain that no campaign was needed instead of
-    // looking unfinished).
+    // Persist Campaign content — only when a campaign was actually part of the plan. When the
+    // writer ran but judged none necessary, the row still exists so the delivery screen can
+    // explain that instead of looking unfinished; when nobody asked for one, there's no row.
     const campaignOutput = campaignResult.data;
-    const campaignContent = await generatedContentRepository.create({
-      projectId,
-      agentExecutionId: campaignExecution.id,
-      platform: "GENERAL",
-      format: "CAMPAIGN_PLAN",
-      title: campaignOutput.required ? campaignOutput.name : "Nenhuma campanha necessária",
-      content: campaignOutput as unknown as Prisma.InputJsonValue,
-      maxAutomaticRevisions: aiConfig.maxAutomaticRevisions,
-      metadata: {
-        isSimulated: campaignResult.usedFallback,
-        promptVersion: campaignResult.promptVersion,
-      } as Prisma.InputJsonValue,
-    });
-    await createInitialVersion(campaignContent.id, "CAMPAIGN_WRITER", campaignOutput);
+    const campaignContent = shouldRunCampaign
+      ? await generatedContentRepository.create({
+          projectId,
+          agentExecutionId: campaignExecution.id,
+          platform: "GENERAL",
+          format: "CAMPAIGN_PLAN",
+          title: campaignOutput.required ? campaignOutput.name : "Nenhuma campanha necessária",
+          content: campaignOutput as unknown as Prisma.InputJsonValue,
+          maxAutomaticRevisions: aiConfig.maxAutomaticRevisions,
+          metadata: {
+            isSimulated: campaignResult.usedFallback,
+            promptVersion: campaignResult.promptVersion,
+          } as Prisma.InputJsonValue,
+        })
+      : null;
+    if (campaignContent) await createInitialVersion(campaignContent.id, "CAMPAIGN_WRITER", campaignOutput);
     await agentExecutionRepository.update(campaignExecution.id, {
       status: shouldRunCampaign ? executionStatus(campaignResult.usedFallback) : "SKIPPED",
       progress: 100,
@@ -508,7 +521,7 @@ export async function runWorkflow(projectId: string): Promise<void> {
       where: { projectId, agentExecutionId: { not: chiefExecution.id } },
       include: { agentExecution: { select: { agentType: true } } },
     });
-    const reviewableRows = allContents.filter((c) => c.id !== campaignContent.id || campaignOutput.required);
+    const reviewableRows = allContents.filter((c) => c.id !== campaignContent?.id || campaignOutput.required);
     const reviewableContents: ReviewableContent[] = reviewableRows.map((c) => ({
       id: c.id,
       platform: c.platform,
@@ -522,7 +535,14 @@ export async function runWorkflow(projectId: string): Promise<void> {
       contents: reviewableContents,
       company,
     });
-    const reviewerJudgmentsById = new Map(reviewerResult.data.reviews.map((r) => [r.generatedContentId, r]));
+    // Simulated judgments must not trigger automatic rewrites of real content — route
+    // everything straight to a human instead.
+    const reviewerJudgmentsById = new Map(
+      reviewerResult.data.reviews.map((r) => [
+        r.generatedContentId,
+        reviewerResult.usedFallback ? { ...r, requiresHumanDecision: true, canBeAutomaticallyRevised: false } : r,
+      ])
+    );
 
     await persistAgentMetrics(reviewerExecution.id, reviewerResult);
     await messageRepository.create({
@@ -590,18 +610,24 @@ export async function runWorkflow(projectId: string): Promise<void> {
 
     // One aggregated notification per project instead of one per content —
     // several items typically reach WAITING_HUMAN_APPROVAL together here.
-    await notifyPendingApproval({
+    const waitingItems = cycleResults
+      .filter((r) => r.reachedWaitingApproval && r.reason)
+      .map((r) => ({
+        contentId: r.contentId,
+        contentTitle: r.contentTitle,
+        platform: r.platform,
+        format: r.format,
+        reason: r.reason!,
+      }));
+
+    await notifyPendingApproval({ projectId, projectTitle: project.title, items: waitingItems });
+
+    // Separate automation (see N8N_IMAGE_WEBHOOK_URL): generates an image per content item.
+    // Campaign plans have no single visual, so they're excluded here.
+    await notifyContentReadyForImage({
       projectId,
       projectTitle: project.title,
-      items: cycleResults
-        .filter((r) => r.reachedWaitingApproval && r.reason)
-        .map((r) => ({
-          contentId: r.contentId,
-          contentTitle: r.contentTitle,
-          platform: r.platform,
-          format: r.format,
-          reason: r.reason!,
-        })),
+      items: waitingItems.filter((item) => item.format !== "CAMPAIGN_PLAN"),
     });
 
     // Roll each writer's AgentExecution back up to a single final status/message —

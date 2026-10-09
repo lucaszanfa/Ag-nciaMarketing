@@ -4,10 +4,12 @@ import Link from "next/link";
 import { FileJson, FileText, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ProjectStatusBadge } from "@/components/workflow/status-badge";
 import { formatDateTime } from "@/lib/format";
 import { buildProjectExportJson, buildProjectExportMarkdown, downloadFile } from "@/lib/export";
 import type { SerializedProjectDetail } from "@/types/project";
 import type { ChiefEditorPlan } from "@/services/ai/schemas/chief-editor.schema";
+import type { ProjectStatus } from "@/types/enums";
 
 export function SummaryPanel({
   project,
@@ -45,7 +47,7 @@ export function SummaryPanel({
           </div>
           <div>
             <p className="text-muted-foreground">Status</p>
-            <p className="font-medium">{project.status}</p>
+            <ProjectStatusBadge status={project.status as ProjectStatus} />
           </div>
         </div>
 

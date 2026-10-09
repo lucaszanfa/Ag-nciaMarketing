@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ContentStatusBadge } from "@/components/workflow/status-badge";
 import { ContentActions } from "@/components/delivery/content-actions";
 import { buildContentCopyText, buildContentPreview } from "@/lib/content-text";
+import { platformLabel, contentFormatLabel } from "@/lib/content-labels";
 import { formatDateTime } from "@/lib/format";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ContentFormat, ContentStatus, Platform } from "@/types/enums";
@@ -35,8 +36,8 @@ export function LibraryContentCard({ item }: { item: LibraryContentItem }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-1.5">
-          <Badge variant="outline">{item.platform}</Badge>
-          <Badge variant="outline">{item.format}</Badge>
+          <Badge variant="outline">{platformLabel(item.platform)}</Badge>
+          <Badge variant="outline">{contentFormatLabel(item.format)}</Badge>
         </div>
         {preview && <p className="line-clamp-3 text-sm text-muted-foreground">{preview}</p>}
         {item.imageUrl && <img src={item.imageUrl} alt={item.title} className="max-w-full rounded-md" />}

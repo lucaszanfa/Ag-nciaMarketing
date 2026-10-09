@@ -9,6 +9,7 @@ export interface SidebarNavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  badge?: number;
 }
 
 export function SidebarNav({ items, collapsed }: { items: SidebarNavItem[]; collapsed: boolean }) {
@@ -25,7 +26,7 @@ export function SidebarNav({ items, collapsed }: { items: SidebarNavItem[]; coll
             href={item.href}
             title={collapsed ? item.label : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               isActive
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -33,7 +34,17 @@ export function SidebarNav({ items, collapsed }: { items: SidebarNavItem[]; coll
             )}
           >
             <Icon className="size-4 shrink-0" />
-            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+            {!!item.badge && (
+              <span
+                className={cn(
+                  "flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground",
+                  collapsed && "absolute top-1 right-1"
+                )}
+              >
+                {item.badge > 99 ? "99+" : item.badge}
+              </span>
+            )}
           </Link>
         );
       })}

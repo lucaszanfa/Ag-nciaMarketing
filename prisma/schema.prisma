@@ -26,10 +26,14 @@ datasource db {
 // ---------- Models ----------
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      String
+  id       String @id @default(cuid())
+  name     String
+  email    String @unique
+  password String
+  /// UserRole (see src/types/enums.ts)
+  role     String @default("COMMON")
+  /// UserStatus (see src/types/enums.ts) — gates login until an admin approves the registration.
+  status    String   @default("PENDING")
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -76,6 +80,8 @@ model Project {
 
   title           String
   originalRequest String
+  /// Structured options picked in the request form (channels, quantity, objective, period, news hook) — see src/lib/project-request.ts
+  requestOptions  Json?
   /// ProjectStatus (see src/types/enums.ts)
   status          String @default("DRAFT")
   progress        Int    @default(0)

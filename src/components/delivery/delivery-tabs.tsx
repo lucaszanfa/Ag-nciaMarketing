@@ -88,7 +88,13 @@ function BulkActionsToolbar({ projectId, waitingCount }: { projectId: string; wa
   );
 }
 
-export function DeliveryTabs({ project }: { project: SerializedProjectDetail }) {
+export function DeliveryTabs({
+  project,
+  company,
+}: {
+  project: SerializedProjectDetail;
+  company: { name: string; logoUrl: string | null };
+}) {
   const chiefEditorExecution = project.agentExecutions.find((e) => e.agentType === "CHIEF_EDITOR");
   const reviewerExecution = project.agentExecutions.find((e) => e.agentType === "REVIEWER");
 
@@ -96,15 +102,22 @@ export function DeliveryTabs({ project }: { project: SerializedProjectDetail }) 
   const reviewerSummary = (reviewerExecution?.output as unknown as ReviewerOutput | null) ?? null;
 
   const isBriefing = (agentExecutionId: string) => agentExecutionId === chiefEditorExecution?.id;
+  // DRAFT means the content never made it into the review pipeline (e.g. a
+  // stuck/duplicate generation) — it's not a real deliverable, so it's noise
+  // in the delivery view. Content actually awaiting a decision is
+  // WAITING_HUMAN_APPROVAL, not DRAFT, and keeps showing with its actions.
+  const isDeliverable = (c: { status: string }) => c.status !== "DRAFT";
 
   const linkedinContents = project.generatedContents.filter(
-    (c) => c.platform === "LINKEDIN" && !isBriefing(c.agentExecutionId)
+    (c) => c.platform === "LINKEDIN" && !isBriefing(c.agentExecutionId) && isDeliverable(c)
   );
   const instagramContents = project.generatedContents.filter(
-    (c) => c.platform === "INSTAGRAM" && !isBriefing(c.agentExecutionId)
+    (c) => c.platform === "INSTAGRAM" && !isBriefing(c.agentExecutionId) && isDeliverable(c)
   );
   const campaignContent =
-    project.generatedContents.find((c) => c.format === "CAMPAIGN_PLAN" && !isBriefing(c.agentExecutionId)) ?? null;
+    project.generatedContents.find(
+      (c) => c.format === "CAMPAIGN_PLAN" && !isBriefing(c.agentExecutionId) && isDeliverable(c)
+    ) ?? null;
   const waitingCount = project.generatedContents.filter((c) => c.status === "WAITING_HUMAN_APPROVAL").length;
 
   return (
@@ -130,16 +143,17 @@ export function DeliveryTabs({ project }: { project: SerializedProjectDetail }) 
               linkedinContents={linkedinContents}
               instagramContents={instagramContents}
               campaignContent={campaignContent}
+              company={company}
             />
           </TabsContent>
           <TabsContent value="planejamento" className="pt-4">
             <PlanningPanel plan={plan} />
           </TabsContent>
           <TabsContent value="linkedin" className="pt-4">
-            <LinkedInPanel contents={linkedinContents} />
+            <LinkedInPanel contents={linkedinContents} company={company} />
           </TabsContent>
           <TabsContent value="instagram" className="pt-4">
-            <InstagramPanel contents={instagramContents} />
+            <InstagramPanel contents={instagramContents} company={company} />
           </TabsContent>
           <TabsContent value="campanha" className="pt-4">
             <CampaignPanel content={campaignContent} />

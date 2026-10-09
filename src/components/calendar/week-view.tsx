@@ -19,15 +19,18 @@ function findItem(itemsByDay: Map<string, CalendarContentItem[]>, id: string): C
 export function WeekView({
   days,
   itemsByDay,
+  readOnly = false,
 }: {
   days: Date[];
   itemsByDay: Map<string, CalendarContentItem[]>;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const today = new Date();
 
   async function handleDrop(e: React.DragEvent, day: Date) {
+    if (readOnly) return;
     e.preventDefault();
     setDragOverKey(null);
     const contentId = e.dataTransfer.getData("text/plain");
@@ -70,7 +73,7 @@ export function WeekView({
             </p>
             <div className="flex flex-col gap-1.5 overflow-y-auto">
               {items.map((item) => (
-                <CalendarItemCard key={item.id} item={item} />
+                <CalendarItemCard key={item.id} item={item} readOnly={readOnly} />
               ))}
               {items.length === 0 && <p className="text-xs text-muted-foreground/60">Nada agendado</p>}
             </div>

@@ -49,7 +49,9 @@ function FilterSelect({ paramKey, options, placeholder }: { paramKey: string; op
   return (
     <Select defaultValue={searchParams.get(paramKey) ?? "ALL"} onValueChange={handleChange}>
       <SelectTrigger className="w-full sm:w-44">
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder}>
+          {(value: string) => options.find((o) => o.value === value)?.label ?? placeholder}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {options.map((option) => (

@@ -12,6 +12,13 @@ export const scheduleContentSchema = z.object({
 
 export type ScheduleContentInput = z.infer<typeof scheduleContentSchema>;
 
+export const uploadContentImageSchema = z.object({
+  imageBase64: z.string().min(1, "Campo 'imageBase64' é obrigatório."),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]).default("image/png"),
+});
+
+export type UploadContentImageInput = z.infer<typeof uploadContentImageSchema>;
+
 export const listContentQuerySchema = z.object({
   projectId: z.string().optional(),
   platform: z.enum(["LINKEDIN", "INSTAGRAM", "FACEBOOK", "BLOG", "EMAIL", "GENERAL"]).optional(),

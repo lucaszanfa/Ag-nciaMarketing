@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { ProjectStatusBadge } from "./status-badge";
 import { AgentFlow } from "./agent-flow";
 import { MessageHistory } from "./message-history";
+import { RequestSummary } from "./request-summary";
 import { DeliveryTabs } from "@/components/delivery/delivery-tabs";
 import { formatDateTime } from "@/lib/format";
 import { retryWorkflow } from "@/server/actions/project.actions";
@@ -20,7 +21,13 @@ function normalize(project: ProjectDetail): SerializedProjectDetail {
   return JSON.parse(JSON.stringify(project));
 }
 
-export function ProjectWorkspace({ initialProject }: { initialProject: ProjectDetail }) {
+export function ProjectWorkspace({
+  initialProject,
+  company,
+}: {
+  initialProject: ProjectDetail;
+  company: { name: string; logoUrl: string | null };
+}) {
   const [project, setProject] = useState<SerializedProjectDetail>(() => normalize(initialProject));
   const [retrying, setRetrying] = useState(false);
   const isTerminal = TERMINAL_STATUSES.has(project.status);
@@ -55,6 +62,17 @@ export function ProjectWorkspace({ initialProject }: { initialProject: ProjectDe
   }, [project.id, isTerminal]);
 
   const contentCount = useMemo(() => project.generatedContents.length, [project.generatedContents]);
+  // "Aguardando aprovação" at the project level means *some* content in it
+  // still needs a human decision — but once at least one piece has already
+  // been approved (e.g. the one that triggered a "post agendado" e-mail),
+  // showing that banner here reads as if that specific post weren't
+  // approved, which it necessarily is (scheduling requires it). Only show
+  // the badge for this status when nothing has been decided yet.
+  const hasDecidedContent = useMemo(
+    () => project.generatedContents.some((c) => ["APPROVED", "SCHEDULED", "PUBLISHED"].includes(c.status)),
+    [project.generatedContents]
+  );
+  const showStatusBadge = project.status !== "WAITING_APPROVAL" || !hasDecidedContent;
 
   async function handleRetry() {
     setRetrying(true);
@@ -75,7 +93,7 @@ export function ProjectWorkspace({ initialProject }: { initialProject: ProjectDe
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <ProjectStatusBadge status={project.status as ProjectStatus} />
+            {showStatusBadge && <ProjectStatusBadge status={project.status as ProjectStatus} />}
             {project.status === "FAILED" && (
               <Button size="sm" variant="outline" onClick={handleRetry} disabled={retrying} className="gap-1.5">
                 <RefreshCcw className={retrying ? "size-3.5 animate-spin" : "size-3.5"} />
@@ -85,12 +103,20 @@ export function ProjectWorkspace({ initialProject }: { initialProject: ProjectDe
           </div>
         </div>
 
+        <RequestSummary requestOptions={project.requestOptions} />
+
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Progresso do fluxo</span>
             <span>{project.progress}%</span>
           </div>
           <Progress value={project.progress} />
+          {!isTerminal && (
+            <p className="text-xs text-muted-foreground">
+              A IA local leva alguns minutos por etapa. Pode sair desta página: o trabalho continua e o
+              projeto fica aguardando a sua aprovação quando terminar.
+            </p>
+          )}
         </div>
       </div>
 
@@ -99,7 +125,7 @@ export function ProjectWorkspace({ initialProject }: { initialProject: ProjectDe
 
         <div className="flex flex-col gap-6">
           {(project.status === "WAITING_APPROVAL" || project.status === "COMPLETED") && (
-            <DeliveryTabs project={project} />
+            <DeliveryTabs project={project} company={company} />
           )}
           <MessageHistory messages={project.messages} />
         </div>

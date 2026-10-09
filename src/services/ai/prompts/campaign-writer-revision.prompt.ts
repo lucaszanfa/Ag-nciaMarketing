@@ -1,7 +1,8 @@
 import type { RevisionInput } from "../types";
+import { WRITING_QUALITY_RULES, todayLine } from "./writing-guidelines";
 import type { CampaignWriterOutput } from "../schemas/campaign-writer.schema";
 
-export const CAMPAIGN_WRITER_REVISION_PROMPT_VERSION = "1.0.0";
+export const CAMPAIGN_WRITER_REVISION_PROMPT_VERSION = "2.0.0";
 
 export function buildCampaignWriterRevisionSystemPrompt(): string {
   return `You are the same campaign strategist, now correcting a campaign you already structured
@@ -18,7 +19,9 @@ Rules:
 - Never invent a budget, past performance numbers, or case studies.
 - Keep "required" as it was unless the correction instructions say otherwise.
 - Return only the structured output defined by the campaign schema — no explanations outside of
-  it.`;
+  it.
+
+${WRITING_QUALITY_RULES}`;
 }
 
 export function buildCampaignWriterRevisionUserPrompt(input: RevisionInput<CampaignWriterOutput>): string {
@@ -30,7 +33,9 @@ export function buildCampaignWriterRevisionUserPrompt(input: RevisionInput<Campa
     company.forbiddenTerms.length ? `Forbidden terms — never use these: ${company.forbiddenTerms.join(", ")}` : null,
   ].filter(Boolean);
 
-  return `${companyLines.join("\n")}
+  return `${todayLine(company.today)}
+
+${companyLines.join("\n")}
 
 Original request from the CEO: "${input.originalRequest}"
 

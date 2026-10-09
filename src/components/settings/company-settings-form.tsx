@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateSettings } from "@/server/actions/settings.actions";
 import type { CompanySettings } from "@/generated/prisma/client";
+import type { SettingsSectionId } from "./settings-layout";
 
 function toCsv(value: unknown): string {
   return Array.isArray(value) ? value.join(", ") : "";
@@ -28,7 +29,13 @@ function socialValue(social: unknown, key: string): string {
   return "";
 }
 
-export function CompanySettingsForm({ settings }: { settings: CompanySettings }) {
+export function CompanySettingsForm({
+  settings,
+  activeSection,
+}: {
+  settings: CompanySettings;
+  activeSection: SettingsSectionId;
+}) {
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({
     companyName: settings.companyName,
@@ -93,9 +100,10 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <Card>
+      <Card className={activeSection === "identidade" ? "" : "hidden"}>
         <CardHeader>
           <CardTitle className="text-base">Identidade da empresa</CardTitle>
+          <CardDescription>Como a empresa se descreve — a base do que os agentes sabem sobre ela.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -121,9 +129,10 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={activeSection === "publico" ? "" : "hidden"}>
         <CardHeader>
           <CardTitle className="text-base">Público e tom de voz</CardTitle>
+          <CardDescription>Para quem a marca fala e como ela soa nos conteúdos gerados.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
@@ -145,9 +154,10 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={activeSection === "diretrizes" ? "" : "hidden"}>
         <CardHeader>
           <CardTitle className="text-base">Diretrizes de conteúdo</CardTitle>
+          <CardDescription>Palavras e temas para o Revisor aprovar ou barrar automaticamente.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -173,9 +183,10 @@ export function CompanySettingsForm({ settings }: { settings: CompanySettings })
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={activeSection === "visual" ? "" : "hidden"}>
         <CardHeader>
           <CardTitle className="text-base">Site, redes sociais e identidade visual</CardTitle>
+          <CardDescription>Links e referências visuais usados nos briefings e nas peças geradas.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">

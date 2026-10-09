@@ -1,0 +1,172 @@
+{
+  "id": "PautasSemanais01",
+  "name": "Pautas semanais (notícias do setor → projetos)",
+  "nodes": [
+    {
+      "id": "a1",
+      "name": "Toda segunda às 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a2",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a3",
+      "name": "Configuração",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// ===== EDITE AQUI =====\nconst CONFIG = {\n  // Temas pesquisados no Google Notícias. A IA do app decide quais notícias\n  // realmente têm a ver com a empresa — aqui vale ser abrangente.\n  palavrasChave: [\n    \"subestação energia\",\n    \"linhas de transmissão energia\",\n    \"leilão de transmissão Aneel\",\n    \"automação industrial mineração siderurgia\",\n    \"sistema de proteção elétrica relé\",\n    \"usina solar fotovoltaica\",\n    \"NR10 segurança elétrica\",\n    \"comissionamento usina subestação\",\n  ],\n  porTema: 8,          // quantas manchetes recentes de cada tema enviar para a IA avaliar\n  diasRecentes: 7,     // só notícias dos últimos N dias\n  maxPautas: 3,        // máximo de projetos criados por execução\n  canal: \"LINKEDIN\",   // LINKEDIN ou INSTAGRAM\n  appUrl: \"http://localhost:3000\",\n};\n// ======================\n\nreturn CONFIG.palavrasChave.map((palavraChave) => ({\n  json: {\n    palavraChave,\n    rssUrl:\n      \"https://news.google.com/rss/search?q=\" +\n      encodeURIComponent(palavraChave + \" when:\" + CONFIG.diasRecentes + \"d\") +\n      \"&hl=pt-BR&gl=BR&ceid=BR:pt-419\",\n    porTema: CONFIG.porTema,\n    diasRecentes: CONFIG.diasRecentes,\n    maxPautas: CONFIG.maxPautas,\n    canal: CONFIG.canal,\n    appUrl: CONFIG.appUrl.replace(/\\/+$/, \"\"),\n  },\n}));\n"
+      }
+    },
+    {
+      "id": "a4",
+      "name": "Buscar no Google Notícias",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        100
+      ],
+      "parameters": {
+        "url": "={{ $json.rssUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "xml"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a5",
+      "name": "Juntar manchetes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Junta as manchetes de todas as buscas numa lista única. A escolha do que vira post\n// é feita pela IA no app (endpoint /api/automation/pautas), que conhece a empresa.\nconst configs = $('Configuração').all().map((i) => i.json);\nconst respostas = $input.all();\n\nconst decode = (s) =>\n  s.replace(/<!\\[CDATA\\[/g, \"\").replace(/\\]\\]>/g, \"\")\n    .replace(/&amp;/g, \"&\").replace(/&lt;/g, \"<\").replace(/&gt;/g, \">\")\n    .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\").replace(/&nbsp;/g, \" \").trim();\nconst tag = (xml, name) => {\n  const inicio = xml.search(new RegExp(`<${name}[ >]`));\n  if (inicio < 0) return \"\";\n  const abre = xml.indexOf(\">\", inicio) + 1;\n  const fecha = xml.indexOf(`</${name}>`, abre);\n  return fecha < 0 ? \"\" : decode(xml.slice(abre, fecha));\n};\nconst normalizar = (t) => t.toLowerCase().normalize(\"NFD\").replace(/[^a-z0-9 ]/g, \"\").replace(/ +/g, \" \").trim();\n\nconst cfg0 = configs[0] || {};\nconst limite = Date.now() - (cfg0.diasRecentes || 7) * 24 * 3600 * 1000;\nconst vistos = new Set();\nconst candidatos = [];\n\nrespostas.forEach((resp, idx) => {\n  const cfg = configs[idx] || cfg0;\n  const xml = String(resp.json.xml || \"\");\n  const itens = xml.split(\"<item>\").slice(1).map((bloco) => {\n    const fonte = tag(bloco, \"source\");\n    let titulo = tag(bloco, \"title\");\n    if (fonte && titulo.endsWith(` - ${fonte}`)) titulo = titulo.slice(0, -(fonte.length + 3)).trim();\n    return { titulo, fonte, link: tag(bloco, \"link\"), data: new Date(tag(bloco, \"pubDate\")), tema: cfg.palavraChave };\n  });\n\n  itens\n    .filter((n) => n.titulo && !isNaN(n.data) && n.data.getTime() >= limite)\n    .sort((a, b) => b.data - a.data)\n    .slice(0, cfg.porTema || 10)\n    .forEach((n) => {\n      const chave = normalizar(n.titulo);\n      if (vistos.has(chave)) return;\n      vistos.add(chave);\n      candidatos.push({\n        titulo: n.titulo,\n        fonte: n.fonte,\n        link: n.link,\n        data: n.data.toLocaleDateString(\"pt-BR\", { timeZone: \"America/Sao_Paulo\" }),\n        tema: n.tema,\n      });\n    });\n});\n\nif (candidatos.length === 0) return [];\n\nreturn [{\n  json: {\n    appUrl: cfg0.appUrl,\n    body: { candidatos: candidatos.slice(0, 80), maxPautas: cfg0.maxPautas, canal: cfg0.canal },\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "a6",
+      "name": "IA escolhe e cria projetos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.appUrl }}/api/automation/pautas",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 300000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Toda segunda às 8h": {
+      "main": [
+        [
+          {
+            "node": "Configuração",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Configuração",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuração": {
+      "main": [
+        [
+          {
+            "node": "Buscar no Google Notícias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar no Google Notícias": {
+      "main": [
+        [
+          {
+            "node": "Juntar manchetes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar manchetes": {
+      "main": [
+        [
+          {
+            "node": "IA escolhe e cria projetos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {}
+}

@@ -61,7 +61,9 @@ export function ProjectsToolbar() {
         onValueChange={(value) => updateParams({ status: value ?? "ALL" })}
       >
         <SelectTrigger className="w-full sm:w-56">
-          <SelectValue placeholder="Status" />
+          <SelectValue placeholder="Status">
+            {(value: string) => STATUS_OPTIONS.find((o) => o.value === value)?.label ?? "Status"}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {STATUS_OPTIONS.map((option) => (

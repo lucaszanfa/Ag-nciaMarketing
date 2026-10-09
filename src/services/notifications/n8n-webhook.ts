@@ -39,6 +39,45 @@ export function projectUrl(projectId: string): string {
   return `${base}/projetos/${projectId}`;
 }
 
+/** Links to the single-post view instead of the whole project — used wherever a notification is about one specific piece of content (e.g. "post agendado para hoje"), not a batch. */
+export function contentUrl(projectId: string, contentId: string): string {
+  return `${projectUrl(projectId)}/conteudo/${contentId}`;
+}
+
+/**
+ * Outbound push to a *separate* n8n workflow whose job is to generate an image for each
+ * content item and send it back (see `POST /api/automation/content/[id]/image`) — deliberately
+ * a different webhook/workflow than `notifyPendingApproval` so the two automations can be
+ * built, activated, and changed independently. Same fire-and-forget, never-throws philosophy:
+ * a failed/unset notification never blocks the review/approval flow.
+ */
+export async function notifyContentReadyForImage(batch: PendingApprovalBatch): Promise<void> {
+  if (batch.items.length === 0) return;
+
+  const webhookUrl = process.env.N8N_IMAGE_WEBHOOK_URL?.trim();
+  if (!webhookUrl) return;
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "content.ready_for_image",
+        projectId: batch.projectId,
+        projectTitle: batch.projectTitle,
+        count: batch.items.length,
+        items: batch.items,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+      console.error(`[n8n-webhook] image-generation notification rejected: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error("[n8n-webhook] image-generation notification failed:", error);
+  }
+}
+
 export async function notifyPendingApproval(batch: PendingApprovalBatch): Promise<void> {
   if (batch.items.length === 0) return;
 

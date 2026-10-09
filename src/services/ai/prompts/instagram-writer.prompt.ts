@@ -1,6 +1,7 @@
 import type { InstagramWriterInput } from "../agents/instagram-writer.agent";
+import { WRITING_QUALITY_RULES, todayLine } from "./writing-guidelines";
 
-export const INSTAGRAM_WRITER_PROMPT_VERSION = "1.0.0";
+export const INSTAGRAM_WRITER_PROMPT_VERSION = "2.0.0";
 
 export function buildInstagramWriterSystemPrompt(): string {
   return `You are a senior Instagram content creator working inside an internal marketing team.
@@ -33,7 +34,9 @@ Format-specific expectations:
   on-screen text for each scene.
 - POST: a theme, an objective, a caption, CTA and hashtags.
 - STORIES: an ordered sequence of screens, each with its own text and interaction type (e.g. poll,
-  question box, slider, link sticker, countdown).`;
+  question box, slider, link sticker, countdown).
+
+${WRITING_QUALITY_RULES}`;
 }
 
 export function buildInstagramWriterUserPrompt(input: InstagramWriterInput): string {
@@ -60,7 +63,9 @@ export function buildInstagramWriterUserPrompt(input: InstagramWriterInput): str
     )
     .join("\n");
 
-  return `${companyLines.join("\n")}
+  return `${todayLine(company.today)}
+
+${companyLines.join("\n")}
 
 Original request from the CEO: "${input.originalRequest}"
 

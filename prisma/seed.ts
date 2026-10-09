@@ -1,13 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { runWorkflow } from "@/services/workflow/workflow-runner";
+import { hashPassword } from "@/lib/password";
 
+// A separate demo account, distinct from any real login — this seed only
+// ever creates/refreshes its own demo data, never a real user's account.
 const ADMIN_EMAIL = "admin@marketingaistudio.local";
+const ADMIN_PASSWORD = "demo12345";
 
 async function main() {
   const admin = await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
     update: {},
-    create: { name: "Administrador", email: ADMIN_EMAIL, role: "CEO / Responsável de Marketing" },
+    create: {
+      name: "Administrador (demo)",
+      email: ADMIN_EMAIL,
+      password: await hashPassword(ADMIN_PASSWORD),
+      role: "ADMIN",
+      status: "APPROVED",
+    },
   });
 
   await prisma.companySettings.deleteMany();

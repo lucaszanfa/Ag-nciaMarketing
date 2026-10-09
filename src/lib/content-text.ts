@@ -67,6 +67,17 @@ export function buildContentCopyText(format: ContentFormat, content: unknown): s
   }
 }
 
+/** The AI-writer's suggested visual direction for a piece of content — used as the image-generation prompt. Campaign plans have no single visual, so this returns null for them. */
+export function getVisualSuggestion(format: ContentFormat, content: unknown): string | null {
+  try {
+    if (format === "CAMPAIGN_PLAN") return null;
+    const value = content as { visualSuggestion?: string };
+    return value.visualSuggestion ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function buildContentPreview(platform: Platform, format: ContentFormat, content: unknown): string {
   if (format === "POST" || format === "REELS" || format === "STORIES") {
     const value = content as { caption?: string; body?: string };

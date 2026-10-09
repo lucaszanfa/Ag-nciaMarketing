@@ -173,4 +173,53 @@ export const generatedContentRepository = {
     });
     return result.count > 0;
   },
+
+  /** Content still waiting on a human decision, regardless of project — oldest first (most overdue for review). */
+  listPendingApproval() {
+    return prisma.generatedContent.findMany({
+      where: { status: "WAITING_HUMAN_APPROVAL" },
+      include: { project: { select: { id: true, title: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
+  /**
+   * Same queue as `listPendingApproval`, but shaped for the "Aprovações" inbox page — full
+   * include (agentExecution/reviews/versions/comments) so it renders through `LibraryContentCard`,
+   * and scoped to one person's own projects when `createdById` is set (Comum users).
+   */
+  listApprovalInbox(createdById?: string) {
+    return prisma.generatedContent.findMany({
+      where: {
+        status: "WAITING_HUMAN_APPROVAL",
+        project: createdById ? { createdById } : undefined,
+      },
+      include: {
+        project: { select: { id: true, title: true } },
+        agentExecution: { select: { agentType: true } },
+        reviews: { orderBy: { createdAt: "asc" } },
+        versions: { orderBy: { versionNumber: "asc" } },
+        comments: { orderBy: { createdAt: "asc" } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
+  countPendingApproval(createdById?: string) {
+    return prisma.generatedContent.count({
+      where: {
+        status: "WAITING_HUMAN_APPROVAL",
+        project: createdById ? { createdById } : undefined,
+      },
+    });
+  },
+
+  /** Scheduled content whose publish date has already passed without being marked published. */
+  listOverdueScheduled(asOf: Date) {
+    return prisma.generatedContent.findMany({
+      where: { status: "SCHEDULED", scheduledAt: { lt: asOf } },
+      include: { project: { select: { id: true, title: true } } },
+      orderBy: { scheduledAt: "asc" },
+    });
+  },
 };

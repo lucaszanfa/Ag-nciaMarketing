@@ -9,7 +9,7 @@ import { workflowExecutionRepository } from "@/server/repositories/workflow-exec
 import { agentExecutionRepository } from "@/server/repositories/agent-execution.repository";
 import { reviewCorrectionCoordinator } from "@/services/workflow/review-correction-coordinator";
 import { buildCompanyContext } from "@/services/ai/company-context.service";
-import { getCurrentUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { updateContentSchema, scheduleContentSchema } from "@/validations/content.validation";
 import type { Prisma } from "@/generated/prisma/client";
 import type { ChiefEditorPlan } from "@/services/ai/schemas/chief-editor.schema";
@@ -40,49 +40,55 @@ function revalidateProject(projectId: string) {
 }
 
 export async function approveContent(contentId: string) {
+  await requireRole("CEO");
   const content = await generatedContentRepository.updateStatus(contentId, "APPROVED");
   await maybeCompleteProject(content.projectId);
   revalidateProject(content.projectId);
 }
 
 export async function rejectContent(contentId: string) {
+  await requireRole("CEO");
   const content = await generatedContentRepository.updateStatus(contentId, "REJECTED");
   await maybeCompleteProject(content.projectId);
   revalidateProject(content.projectId);
 }
 
 export async function requestContentAdjustment(contentId: string) {
+  await requireRole("CEO");
   const content = await generatedContentRepository.updateStatus(contentId, "NEEDS_ADJUSTMENT");
   await maybeCompleteProject(content.projectId);
   revalidateProject(content.projectId);
 }
 
 export async function archiveContent(contentId: string) {
+  await requireRole("CEO");
   const content = await generatedContentRepository.updateStatus(contentId, "ARCHIVED");
   await maybeCompleteProject(content.projectId);
   revalidateProject(content.projectId);
 }
 
 export async function approveAllContent(projectId: string) {
+  await requireRole("CEO");
   await generatedContentRepository.decideAllWaitingApproval(projectId, "APPROVED");
   await maybeCompleteProject(projectId);
   revalidateProject(projectId);
 }
 
 export async function rejectAllContent(projectId: string) {
+  await requireRole("CEO");
   await generatedContentRepository.decideAllWaitingApproval(projectId, "REJECTED");
   await maybeCompleteProject(projectId);
   revalidateProject(projectId);
 }
 
 export async function addContentComment(contentId: string, text: string) {
+  const user = await requireRole("ADMIN", "CEO", "COMMON");
   const trimmed = text.trim();
   if (!trimmed) throw new Error("O comentário não pode ficar vazio.");
 
   const content = await generatedContentRepository.findById(contentId);
   if (!content) throw new Error("Conteúdo não encontrado.");
 
-  const user = await getCurrentUser();
   await contentCommentRepository.create({
     generatedContentId: contentId,
     authorName: user.name,
@@ -99,6 +105,7 @@ export async function addContentComment(contentId: string, text: string) {
  * without involving the Reviewer or counting against the automatic limit.
  */
 export async function sendContentBackToAgent(contentId: string, instructions: string) {
+  await requireRole("CEO");
   const trimmed = instructions.trim();
   if (!trimmed) throw new Error("Escreva as instruções para o redator antes de enviar.");
 
@@ -130,6 +137,7 @@ export async function sendContentBackToAgent(contentId: string, instructions: st
  * calendar); any other status is left untouched.
  */
 export async function scheduleContent(contentId: string, scheduledAtIso: string) {
+  await requireRole("CEO");
   const parsed = scheduleContentSchema.parse({ scheduledAt: scheduledAtIso });
   const content = await generatedContentRepository.findById(contentId);
   if (!content) throw new Error("Conteúdo não encontrado.");
@@ -144,6 +152,7 @@ export async function scheduleContent(contentId: string, scheduledAtIso: string)
 
 /** Manual "Publicado" marking — the flow's other option (integração automática) stays out of scope for now. */
 export async function markContentAsPublished(contentId: string) {
+  await requireRole("CEO");
   const content = await generatedContentRepository.findById(contentId);
   if (!content) throw new Error("Conteúdo não encontrado.");
 
@@ -156,6 +165,7 @@ export async function markContentAsPublished(contentId: string) {
 }
 
 export async function updateContent(contentId: string, input: unknown) {
+  await requireRole("CEO");
   const parsed = updateContentSchema.parse(input);
   const current = await generatedContentRepository.findById(contentId);
   if (!current) throw new Error("Conteúdo não encontrado.");

@@ -27,5 +27,14 @@ export async function buildCompanyContext(): Promise<CompanyContext> {
       settings.socialNetworks && typeof settings.socialNetworks === "object" && !Array.isArray(settings.socialNetworks)
         ? (settings.socialNetworks as Record<string, string>)
         : {},
+    today: formatToday(),
   };
+}
+
+function formatToday(now = new Date()): string {
+  const timeZone = "America/Sao_Paulo";
+  const weekday = now.toLocaleDateString("pt-BR", { timeZone, weekday: "long" });
+  const ptBr = now.toLocaleDateString("pt-BR", { timeZone });
+  const iso = now.toLocaleDateString("en-CA", { timeZone }); // YYYY-MM-DD
+  return `${weekday}, ${ptBr} (${iso})`;
 }

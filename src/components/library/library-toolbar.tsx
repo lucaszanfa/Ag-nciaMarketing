@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PLATFORM_LABELS, CONTENT_FORMAT_LABELS } from "@/lib/content-labels";
 
 interface Option {
   value: string;
@@ -16,18 +17,12 @@ interface Option {
 
 const PLATFORM_OPTIONS: Option[] = [
   { value: "ALL", label: "Todas as plataformas" },
-  { value: "LINKEDIN", label: "LinkedIn" },
-  { value: "INSTAGRAM", label: "Instagram" },
-  { value: "GENERAL", label: "Geral" },
+  ...Object.entries(PLATFORM_LABELS).map(([value, label]) => ({ value, label })),
 ];
 
 const FORMAT_OPTIONS: Option[] = [
   { value: "ALL", label: "Todos os formatos" },
-  { value: "POST", label: "Post" },
-  { value: "CAROUSEL", label: "Carrossel" },
-  { value: "REELS", label: "Reels" },
-  { value: "STORIES", label: "Stories" },
-  { value: "CAMPAIGN_PLAN", label: "Campanha" },
+  ...Object.entries(CONTENT_FORMAT_LABELS).map(([value, label]) => ({ value, label })),
 ];
 
 const STATUS_OPTIONS: Option[] = [
@@ -80,7 +75,9 @@ function FilterSelect({
   return (
     <Select defaultValue={searchParams.get(paramKey) ?? "ALL"} onValueChange={handleChange}>
       <SelectTrigger className="w-full sm:w-48">
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={placeholder}>
+          {(value: string) => options.find((o) => o.value === value)?.label ?? placeholder}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {options.map((option) => (

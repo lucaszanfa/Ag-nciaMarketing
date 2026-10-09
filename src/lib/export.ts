@@ -1,5 +1,8 @@
+import { platformLabel, contentFormatLabel } from "@/lib/content-labels";
+import { PROJECT_STATUS_LABEL, CONTENT_STATUS_LABEL, REVIEW_DECISION_LABEL } from "@/components/workflow/status-badge";
 import type { SerializedProjectDetail } from "@/types/project";
 import type { ChiefEditorPlan } from "@/services/ai/schemas/chief-editor.schema";
+import type { ProjectStatus, ContentStatus, ReviewDecision } from "@/types/enums";
 
 export function downloadFile(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -61,6 +64,7 @@ export function buildProjectExportJson(project: SerializedProjectDetail): string
 export function buildProjectExportMarkdown(project: SerializedProjectDetail, plan: ChiefEditorPlan | null): string {
   const lines: string[] = [];
   lines.push(`# ${project.title}`, "");
+  lines.push(`**Status:** ${PROJECT_STATUS_LABEL[project.status as ProjectStatus] ?? project.status}`, "");
   lines.push(`**Solicitação original:** ${project.originalRequest}`, "");
 
   if (plan) {
@@ -73,15 +77,19 @@ export function buildProjectExportMarkdown(project: SerializedProjectDetail, pla
   }
 
   for (const content of project.generatedContents) {
-    lines.push(`## ${content.title} (${content.platform} · ${content.format})`, "");
-    lines.push(`- Status: ${content.status} · Versão ${content.currentVersion}`);
+    lines.push(`## ${content.title} (${platformLabel(content.platform)} · ${contentFormatLabel(content.format)})`, "");
+    lines.push(
+      `- Status: ${CONTENT_STATUS_LABEL[content.status as ContentStatus] ?? content.status} · Versão ${content.currentVersion}`
+    );
     if (content.automaticRevisionCount > 0) {
       lines.push(
         `- Correções automáticas: ${content.automaticRevisionCount}/${content.maxAutomaticRevisions}${content.revisionLimitReached ? " (limite atingido)" : ""}`
       );
     }
     if (content.latestReviewDecision) {
-      lines.push(`- Última decisão do Revisor: ${content.latestReviewDecision}`);
+      lines.push(
+        `- Última decisão do Revisor: ${REVIEW_DECISION_LABEL[content.latestReviewDecision as ReviewDecision] ?? content.latestReviewDecision}`
+      );
     }
     lines.push("");
     lines.push("```json", JSON.stringify(content.content, null, 2), "```", "");

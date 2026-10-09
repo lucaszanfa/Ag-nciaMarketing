@@ -1,25 +1,28 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ReviewDecisionBadge } from "@/components/workflow/status-badge";
 import type { GeneratedContentDetail } from "@/types/project";
 import type { ReviewerOutput } from "@/services/ai/schemas";
+import type { ReviewDecision } from "@/types/enums";
 
-const DECISION_LABEL: Record<string, string> = {
-  APPROVED: "Aprovado",
-  NEEDS_ADJUSTMENT: "Precisa de ajustes",
-  REJECTED: "Reprovado",
-};
-
-const DECISION_CLASS: Record<string, string> = {
-  APPROVED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  NEEDS_ADJUSTMENT: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  REJECTED: "bg-destructive/10 text-destructive",
-};
+function scoreBarClass(score: number): string {
+  if (score >= 85) return "bg-emerald-500";
+  if (score >= 65) return "bg-amber-500";
+  return "bg-destructive";
+}
 
 function ScoreRow({ label, score }: { label: string; score: number }) {
   return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{score}</span>
+    <div className="space-y-1 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-medium">{score}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full ${scoreBarClass(score)}`}
+          style={{ width: `${Math.max(0, Math.min(100, score))}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -62,12 +65,10 @@ export function ReviewPanel({
                   </p>
                 )}
               </div>
-              <Badge variant="outline" className={`border-transparent font-medium ${DECISION_CLASS[review.decision]}`}>
-                {DECISION_LABEL[review.decision]}
-              </Badge>
+              <ReviewDecisionBadge decision={review.decision as ReviewDecision} />
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
                 <ScoreRow label="Geral" score={review.overallScore} />
                 <ScoreRow label="Clareza" score={review.clarityScore} />
                 <ScoreRow label="Canal" score={review.channelFitScore} />
@@ -139,7 +140,7 @@ export function ReviewPanel({
                         <p>
                           <span className="font-medium">Tentativa {prior.revisionAttempt}</span> · versão{" "}
                           {prior.reviewedVersion} · nota {prior.overallScore} ·{" "}
-                          <span className={DECISION_CLASS[prior.decision]}>{DECISION_LABEL[prior.decision]}</span>
+                          <ReviewDecisionBadge decision={prior.decision as ReviewDecision} />
                         </p>
                         {Array.isArray(prior.problems) && prior.problems.length > 0 && (
                           <p className="text-muted-foreground">{(prior.problems as string[]).join("; ")}</p>

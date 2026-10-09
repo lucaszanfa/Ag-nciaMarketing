@@ -1,6 +1,7 @@
 import type { CampaignWriterInput } from "../agents/campaign-writer.agent";
+import { WRITING_QUALITY_RULES, todayLine } from "./writing-guidelines";
 
-export const CAMPAIGN_WRITER_PROMPT_VERSION = "1.0.0";
+export const CAMPAIGN_WRITER_PROMPT_VERSION = "2.0.0";
 
 export function buildCampaignWriterSystemPrompt(): string {
   return `You are a senior campaign strategist working inside an internal marketing team.
@@ -25,7 +26,9 @@ Rules:
 - Never invent a budget, past performance numbers, or case studies.
 - Whenever a piece of information depends on a human decision (e.g. exact budget, legal approval,
   paid media spend), say so explicitly in "writerInstructions" or "risks" instead of making it up.
-- Return only the structured output defined by the schema — no explanations outside of it.`;
+- Return only the structured output defined by the schema — no explanations outside of it.
+
+${WRITING_QUALITY_RULES}`;
 }
 
 export function buildCampaignWriterUserPrompt(input: CampaignWriterInput): string {
@@ -49,7 +52,9 @@ export function buildCampaignWriterUserPrompt(input: CampaignWriterInput): strin
         .join("\n")
     : "(no dedicated campaign briefing in the plan — evaluate whether a campaign is still warranted by the overall request)";
 
-  return `${companyLines.join("\n")}
+  return `${todayLine(company.today)}
+
+${companyLines.join("\n")}
 
 Original request from the CEO: "${input.originalRequest}"
 

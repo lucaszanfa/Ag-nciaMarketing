@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { platformLabel, contentFormatLabel } from "@/lib/content-labels";
 import { ScheduleDialog } from "./schedule-dialog";
 
 export interface UnscheduledItem {
@@ -11,7 +12,7 @@ export interface UnscheduledItem {
   project: { id: string; title: string };
 }
 
-export function UnscheduledSidebar({ items }: { items: UnscheduledItem[] }) {
+export function UnscheduledSidebar({ items, readOnly = false }: { items: UnscheduledItem[]; readOnly?: boolean }) {
   return (
     <Card>
       <CardHeader>
@@ -27,12 +28,14 @@ export function UnscheduledSidebar({ items }: { items: UnscheduledItem[] }) {
               {item.title}
             </Link>
             <div className="mt-1 flex flex-wrap gap-1">
-              <Badge variant="outline" className="text-[10px]">{item.platform}</Badge>
-              <Badge variant="outline" className="text-[10px]">{item.format}</Badge>
+              <Badge variant="outline" className="text-[10px]">{platformLabel(item.platform)}</Badge>
+              <Badge variant="outline" className="text-[10px]">{contentFormatLabel(item.format)}</Badge>
             </div>
-            <div className="mt-2">
-              <ScheduleDialog contentId={item.id} triggerLabel="Agendar" />
-            </div>
+            {!readOnly && (
+              <div className="mt-2">
+                <ScheduleDialog contentId={item.id} triggerLabel="Agendar" />
+              </div>
+            )}
           </div>
         ))}
       </CardContent>

@@ -1,7 +1,8 @@
 import type { RevisionInput } from "../types";
+import { WRITING_QUALITY_RULES, todayLine } from "./writing-guidelines";
 import type { LinkedInPost } from "../schemas/linkedin-writer.schema";
 
-export const LINKEDIN_WRITER_REVISION_PROMPT_VERSION = "1.0.0";
+export const LINKEDIN_WRITER_REVISION_PROMPT_VERSION = "2.0.0";
 
 export function buildLinkedInWriterRevisionSystemPrompt(): string {
   return `You are the same senior LinkedIn copywriter, now correcting a post you already wrote based
@@ -21,7 +22,9 @@ Rules:
 - Keep the same "format" (POST/ARTICLE/POLL) and respect the company's tone of voice, preferred and
   forbidden terms.
 - Return only the structured output defined by the schema (the same single-post schema as before)
-  — no explanations outside of it.`;
+  — no explanations outside of it.
+
+${WRITING_QUALITY_RULES}`;
 }
 
 export function buildLinkedInWriterRevisionUserPrompt(input: RevisionInput<LinkedInPost>): string {
@@ -38,7 +41,9 @@ export function buildLinkedInWriterRevisionUserPrompt(input: RevisionInput<Linke
     .map((r, i) => `Attempt ${i} review — problems: ${r.problems.join("; ") || "none"}`)
     .join("\n");
 
-  return `${companyLines.join("\n")}
+  return `${todayLine(company.today)}
+
+${companyLines.join("\n")}
 
 Original request from the CEO: "${input.originalRequest}"
 Editorial plan objective: ${plan.objective} | Tone: ${plan.tone} | Primary CTA: ${plan.primaryCta}

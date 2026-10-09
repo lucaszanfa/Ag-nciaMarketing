@@ -5,10 +5,12 @@ import type { ProjectStatus } from "@/types/enums";
 export interface ListProjectsFilters {
   search?: string;
   status?: ProjectStatus;
+  createdById?: string;
 }
 
 const projectListInclude = {
   _count: { select: { generatedContents: true } },
+  createdBy: { select: { name: true } },
 } satisfies Prisma.ProjectInclude;
 
 export const projectDetailInclude = {
@@ -27,7 +29,12 @@ export const projectDetailInclude = {
 } satisfies Prisma.ProjectInclude;
 
 export const projectRepository = {
-  create(data: { title: string; originalRequest: string; createdById: string }) {
+  create(data: {
+    title: string;
+    originalRequest: string;
+    requestOptions?: Prisma.InputJsonValue;
+    createdById: string;
+  }) {
     return prisma.project.create({ data });
   },
 
@@ -35,6 +42,7 @@ export const projectRepository = {
     return prisma.project.findMany({
       where: {
         status: filters.status,
+        createdById: filters.createdById,
         // SQLite's `contains` filter has no `mode` option (Postgres/MySQL-only in
         // Prisma); SQLite's LIKE is already case-insensitive for ASCII text.
         OR: filters.search
@@ -47,6 +55,22 @@ export const projectRepository = {
       include: projectListInclude,
       orderBy: { updatedAt: "desc" },
     });
+  },
+
+  /** Status counts unaffected by the list's search/status filters — used for the page's stat strip. */
+  async countByStatus(createdById?: string) {
+    const groups = await prisma.project.groupBy({
+      by: ["status"],
+      where: { createdById },
+      _count: { _all: true },
+    });
+    const byStatus = Object.fromEntries(groups.map((g) => [g.status, g._count._all]));
+    const total = groups.reduce((sum, g) => sum + g._count._all, 0);
+    return {
+      total,
+      waitingApproval: byStatus.WAITING_APPROVAL ?? 0,
+      completed: byStatus.COMPLETED ?? 0,
+    };
   },
 
   findById(id: string) {
@@ -70,6 +94,7 @@ export const projectRepository = {
       data: {
         title: `${original.title} (cópia)`,
         originalRequest: original.originalRequest,
+        requestOptions: original.requestOptions ?? undefined,
         createdById: original.createdById,
       },
     });

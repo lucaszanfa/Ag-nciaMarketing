@@ -64,4 +64,6 @@ export interface CompanyContext {
   hashtags: string[];
   website?: string | null;
   socialNetworks: Record<string, string>;
+  /** Today's date in São Paulo time, e.g. "sexta-feira, 09/10/2026 (2026-10-09)" — models don't know it otherwise. */
+  today: string;
 }

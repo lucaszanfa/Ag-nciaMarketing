@@ -1,9 +1,10 @@
 import type { RevisionInput } from "../types";
+import { WRITING_QUALITY_RULES, todayLine } from "./writing-guidelines";
 import type { InstagramCarousel, InstagramPost, InstagramReels, InstagramStory } from "../schemas/instagram-writer.schema";
 
 export type InstagramContent = InstagramCarousel | InstagramReels | InstagramPost | InstagramStory;
 
-export const INSTAGRAM_WRITER_REVISION_PROMPT_VERSION = "1.0.0";
+export const INSTAGRAM_WRITER_REVISION_PROMPT_VERSION = "2.0.0";
 
 export function buildInstagramWriterRevisionSystemPrompt(): string {
   return `You are the same senior Instagram content creator, now correcting a piece you already
@@ -22,7 +23,9 @@ Rules:
 - Never invent numbers, client names, case studies, or results.
 - Respect the company's tone of voice and forbidden terms/topics.
 - Return only the structured output defined by the schema for this exact format — no explanations
-  outside of it.`;
+  outside of it.
+
+${WRITING_QUALITY_RULES}`;
 }
 
 export function buildInstagramWriterRevisionUserPrompt(input: RevisionInput<InstagramContent>): string {
@@ -34,7 +37,9 @@ export function buildInstagramWriterRevisionUserPrompt(input: RevisionInput<Inst
     company.forbiddenTerms.length ? `Forbidden terms — never use these: ${company.forbiddenTerms.join(", ")}` : null,
   ].filter(Boolean);
 
-  return `${companyLines.join("\n")}
+  return `${todayLine(company.today)}
+
+${companyLines.join("\n")}
 
 Original request from the CEO: "${input.originalRequest}"
 Editorial plan objective: ${plan.objective} | Tone: ${plan.tone} | Primary CTA: ${plan.primaryCta}

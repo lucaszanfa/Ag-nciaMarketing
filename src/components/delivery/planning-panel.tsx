@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { platformLabel, contentFormatLabel } from "@/lib/content-labels";
 import type { ChiefEditorPlan } from "@/services/ai/schemas/chief-editor.schema";
 
 export function PlanningPanel({ plan }: { plan: ChiefEditorPlan | null }) {
@@ -33,8 +34,8 @@ export function PlanningPanel({ plan }: { plan: ChiefEditorPlan | null }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">{item.theme}</p>
                 <div className="flex gap-1.5">
-                  <Badge variant="outline">{item.platform}</Badge>
-                  <Badge variant="outline">{item.format}</Badge>
+                  <Badge variant="outline">{platformLabel(item.platform)}</Badge>
+                  <Badge variant="outline">{contentFormatLabel(item.format)}</Badge>
                 </div>
               </div>
               <p className="mt-1 text-muted-foreground">{item.objective}</p>

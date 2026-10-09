@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { AgentStatus, ProjectStatus, ContentStatus } from "@/types/enums";
+import type { AgentStatus, ProjectStatus, ContentStatus, ReviewDecision } from "@/types/enums";
 
 const AGENT_STATUS_LABEL: Record<AgentStatus, string> = {
   WAITING: "Aguardando",
@@ -14,7 +14,7 @@ const AGENT_STATUS_LABEL: Record<AgentStatus, string> = {
 
 const AGENT_STATUS_CLASS: Record<AgentStatus, string> = {
   WAITING: "bg-muted text-muted-foreground",
-  WORKING: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  WORKING: "bg-primary/10 text-primary",
   COMPLETED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   COMPLETED_WITH_FALLBACK: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   NEEDS_ADJUSTMENT: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -30,7 +30,7 @@ export function AgentStatusBadge({ status, className }: { status: AgentStatus; c
   );
 }
 
-const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
+export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   DRAFT: "Rascunho",
   RUNNING: "Em andamento",
   WAITING_APPROVAL: "Aguardando aprovação",
@@ -41,7 +41,7 @@ const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
 
 const PROJECT_STATUS_CLASS: Record<ProjectStatus, string> = {
   DRAFT: "bg-muted text-muted-foreground",
-  RUNNING: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  RUNNING: "bg-primary/10 text-primary",
   WAITING_APPROVAL: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   COMPLETED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   FAILED: "bg-destructive/10 text-destructive",
@@ -59,7 +59,7 @@ export function ProjectStatusBadge({ status, className }: { status: ProjectStatu
   );
 }
 
-const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
+export const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
   DRAFT: "Rascunho",
   REVIEWED: "Revisado",
   UNDER_AI_REVIEW: "Em revisão pela IA",
@@ -75,9 +75,9 @@ const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
 
 const CONTENT_STATUS_CLASS: Record<ContentStatus, string> = {
   DRAFT: "bg-muted text-muted-foreground",
-  REVIEWED: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  UNDER_AI_REVIEW: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  AI_REVISING: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  REVIEWED: "bg-primary/10 text-primary",
+  UNDER_AI_REVIEW: "bg-primary/10 text-primary",
+  AI_REVISING: "bg-primary/10 text-primary",
   WAITING_HUMAN_APPROVAL: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   APPROVED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   NEEDS_ADJUSTMENT: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -94,6 +94,29 @@ export function ContentStatusBadge({ status, className }: { status: ContentStatu
       className={cn("border-transparent font-medium", CONTENT_STATUS_CLASS[status], className)}
     >
       {CONTENT_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+export const REVIEW_DECISION_LABEL: Record<ReviewDecision, string> = {
+  APPROVED: "Aprovado",
+  NEEDS_ADJUSTMENT: "Precisa de ajustes",
+  REJECTED: "Reprovado",
+};
+
+const REVIEW_DECISION_CLASS: Record<ReviewDecision, string> = {
+  APPROVED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  NEEDS_ADJUSTMENT: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  REJECTED: "bg-destructive/10 text-destructive",
+};
+
+export function ReviewDecisionBadge({ decision, className }: { decision: ReviewDecision; className?: string }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn("border-transparent font-medium", REVIEW_DECISION_CLASS[decision], className)}
+    >
+      {REVIEW_DECISION_LABEL[decision]}
     </Badge>
   );
 }

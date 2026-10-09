@@ -251,7 +251,35 @@ export async function processContentReviewCycle(
       maxAutomaticRevisions: content.maxAutomaticRevisions,
     });
 
-    usedFallbackAny = usedFallbackAny || revisionResult.usedFallback;
+    // A simulated "revision" is canned text (random hooks, made-up stats) — it must never
+    // replace the real AI-written version. Keep what we have and let a human decide.
+    if (revisionResult.usedFallback) {
+      await generatedContentRepository.updateRevisionState(content.id, {
+        latestReviewDecision: judgment.decision,
+        revisionLimitReached: false,
+        lastReviewId: review.id,
+      });
+      await generatedContentRepository.tryTransitionStatus(content.id, ["AI_REVISING"], "WAITING_HUMAN_APPROVAL");
+      await messageRepository.create({
+        projectId: ctx.projectId,
+        authorType: "AGENT",
+        agentType: content.agentType,
+        content: `${agentLabel} não conseguiu corrigir "${content.title}" com a IA. A versão anterior foi mantida e enviada para aprovação humana, com as observações do Revisor.`,
+      });
+      return {
+        contentId: content.id,
+        contentTitle: content.title,
+        platform: content.platform,
+        format: content.format,
+        agentType: content.agentType,
+        usedFallback: usedFallbackAny,
+        automaticRevisionCount,
+        finalDecision: judgment.decision,
+        reachedWaitingApproval: true,
+        reason: "cannot_auto_revise",
+      };
+    }
+
     currentContentData = revisionResult.data;
     currentVersion += 1;
     automaticRevisionCount = nextAttempt;
@@ -303,9 +331,10 @@ export async function processContentReviewCycle(
       ],
     });
     usedFallbackAny = usedFallbackAny || reReview.usedFallback;
-    const nextJudgment = reReview.data.reviews[0];
+    // A simulated re-review would drive further rewrites with made-up feedback — stop here instead.
+    const nextJudgment = reReview.usedFallback ? undefined : reReview.data.reviews[0];
     if (!nextJudgment) {
-      console.error(`[review-correction] re-review for content ${content.id} returned no result — sending to human review.`);
+      console.error(`[review-correction] re-review for content ${content.id} returned no usable result — sending to human review.`);
       await generatedContentRepository.updateRevisionState(content.id, {
         latestReviewDecision: judgment.decision,
         revisionLimitReached: false,

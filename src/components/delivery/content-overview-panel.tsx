@@ -14,10 +14,12 @@ export function ContentOverviewPanel({
   linkedinContents,
   instagramContents,
   campaignContent,
+  company,
 }: {
   linkedinContents: GeneratedContentDetail[];
   instagramContents: GeneratedContentDetail[];
   campaignContent: GeneratedContentDetail | null;
+  company: { name: string; logoUrl: string | null };
 }) {
   const hasCampaign = campaignContent !== null;
   const hasAnything = linkedinContents.length > 0 || instagramContents.length > 0 || hasCampaign;
@@ -31,13 +33,13 @@ export function ContentOverviewPanel({
       {linkedinContents.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground">LinkedIn</h3>
-          <LinkedInPanel contents={linkedinContents} />
+          <LinkedInPanel contents={linkedinContents} company={company} />
         </section>
       )}
       {instagramContents.length > 0 && (
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground">Instagram</h3>
-          <InstagramPanel contents={instagramContents} />
+          <InstagramPanel contents={instagramContents} company={company} />
         </section>
       )}
       {hasCampaign && (
